@@ -1,0 +1,22 @@
+{
+  "name": "mqtt-websocket-sensor-system",
+  "version": "1.0.0",
+  "description": "Real-time sensor data pipeline: MQTT → Redis → WebSocket/Socket.IO",
+  "scripts": {
+    "simulator": "node sensor-simulator.js",
+    "bridge": "node mqtt-bridge.js",
+    "server": "node socketio-server.js",
+    "all:ws": "concurrently \"npm run bridge\" \"npm run server:ws\" \"npm run simulator\"",
+    "all:socketio": "concurrently \"npm run bridge\" \"npm run server:socketio\" \"npm run simulator\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "http": "^0.0.1-security",
+    "ioredis": "^5.8.2",
+    "mongoose": "^8.19.3",
+    "mqtt": "^5.14.1",
+    "socket.io": "^4.8.1"
+  }
+}

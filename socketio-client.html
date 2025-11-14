@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Socket.IO Real-Time Dashboard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    h1 {
+      color: #333;
+      margin-bottom: 8px;
+    }
+    
+    .subtitle {
+      color: #6b7280;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+    
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    
+    .stat-box {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 16px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    
+    .stat-box.danger {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    }
+    
+    .stat-label {
+      font-size: 11px;
+      opacity: 0.9;
+      margin-bottom: 4px;
+    }
+    
+    .stat-value {
+      font-size: 28px;
+      font-weight: bold;
+    }
+    
+    .status {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    
+    .status.connected {
+      background: #10b981;
+      color: white;
+    }
+    
+    .status.disconnected {
+      background: #ef4444;
+      color: white;
+    }
+    
+    .controls {
+      margin-top: 16px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #5568d3;
+    }
+    
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #333;
+    }
+    
+    .btn-secondary:hover {
+      background: #d1d5db;
+    }
+
+    .btn-success {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #059669;
+    }
+    
+    .filter-section {
+      margin-top: 16px;
+      padding: 16px;
+      background: #f9fafb;
+      border-radius: 8px;
+    }
+
+    .filter-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #374151;
+    }
+
+    .filter-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 4px;
+      border: 2px solid #d1d5db;
+      background: white;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter-btn.active {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+    
+    .sensors-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+    }
+    
+    .sensor-card {
+      background: white;
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+      position: relative;
+    }
+    
+    .sensor-card.failed {
+      background: #fee2e2;
+      border: 2px solid #ef4444;
+    }
+    
+    .sensor-card.inactive {
+      opacity: 0.6;
+      background: #fef3c7;
+      border: 2px solid #f59e0b;
+    }
+    
+    .sensor-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+    
+    .sensor-status-indicator {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #10b981;
+    }
+    
+    .sensor-status-indicator.failed {
+      background: #ef4444;
+      animation: pulse 1s infinite;
+    }
+
+    .sensor-status-indicator.inactive {
+      background: #f59e0b;
+      animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    
+    .sensor-card.flash {
+      animation: flash 0.3s;
+    }
+    
+    @keyframes flash {
+      0%, 100% { background: white; }
+      50% { background: #fef3c7; }
+    }
+    
+    .sensor-card.failed.flash {
+      animation: flashRed 0.3s;
+    }
+    
+    @keyframes flashRed {
+      0%, 100% { background: #fee2e2; }
+      50% { background: #fca5a5; }
+    }
+    
+    .sensor-id {
+      font-size: 10px;
+      color: #6b7280;
+      margin-bottom: 4px;
+    }
+    
+    .sensor-type {
+      font-size: 11px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 6px;
+      text-transform: capitalize;
+    }
+    
+    .sensor-value {
+      font-size: 20px;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .sensor-card.failed .sensor-value {
+      color: #ef4444;
+    }
+
+    .sensor-card.inactive .sensor-value {
+      color: #f59e0b;
+    }
+    
+    .sensor-unit {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-left: 2px;
+    }
+
+    .sensor-status-text {
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-top: 4px;
+      color: #10b981;
+    }
+
+    .sensor-card.failed .sensor-status-text {
+      color: #ef4444;
+    }
+
+    .sensor-card.inactive .sensor-status-text {
+      color: #f59e0b;
+    }
+    
+    .log {
+      background: #1f2937;
+      color: #e5e7eb;
+      padding: 16px;
+      border-radius: 8px;
+      margin-top: 20px;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+    
+    .log-entry {
+      margin-bottom: 4px;
+      opacity: 0.8;
+    }
+
+    .log-entry.success { color: #10b981; }
+    .log-entry.error { color: #ef4444; }
+    .log-entry.info { color: #3b82f6; }
+    .log-entry.warning { color: #f59e0b; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>⚡ Socket.IO Real-Time Dashboard</h1>
+      <div class="subtitle">With Rooms & Smart Filtering - Click any sensor for details</div>
+      <div>
+        Status: <span id="status" class="status disconnected">Disconnected</span>
+      </div>
+      
+      <div class="stats">
+        <div class="stat-box">
+          <div class="stat-label">Messages</div>
+          <div class="stat-value" id="msgCount">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Rate (msg/s)</div>
+          <div class="stat-value" id="msgRate">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Total Sensors</div>
+          <div class="stat-value" id="sensorCount">0</div>
+        </div>
+        <div class="stat-box danger">
+          <div class="stat-label">Failed Sensors</div>
+          <div class="stat-value" id="failedCount">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Latency (avg)</div>
+          <div class="stat-value" id="latency">0<span class="sensor-unit">ms</span></div>
+        </div>
+      </div>
+      
+      <div class="controls">
+        <button id="connectBtn" class="btn-primary">Connect</button>
+        <button id="subscribeAllBtn" class="btn-success" disabled>Subscribe All</button>
+        <button id="clearBtn" class="btn-secondary">Clear Display</button>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-title">Filter by Sensor Type:</div>
+        <div class="filter-buttons">
+          <button class="filter-btn" data-type="temperature">🌡️ Temperature</button>
+          <button class="filter-btn" data-type="humidity">💧 Humidity</button>
+          <button class="filter-btn" data-type="pressure">🔘 Pressure</button>
+          <button class="filter-btn" data-type="vibration">📊 Vibration</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="sensors-grid" id="sensorsGrid"></div>
+    
+    <div class="log" id="log"></div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script>
+    let socket = null;
+    let currentRooms = [];
+    const sensors = new Map();
+    const sensorLastSeen = new Map();
+    const INACTIVE_THRESHOLD = 5000; // 5 seconds - if no message, mark as inactive
+    let stats = {
+      totalMessages: 0,
+      lastSecondMessages: 0,
+      lastSecondTime: Date.now(),
+      latencies: []
+    };
+
+    // Check for inactive sensors
+    setInterval(() => {
+      const now = Date.now();
+      sensors.forEach((data, key) => {
+        const lastSeen = sensorLastSeen.get(key) || now;
+        const timeSinceLastSeen = now - lastSeen;
+        
+        // Only mark as inactive if it's not already marked as failed
+        if (timeSinceLastSeen > INACTIVE_THRESHOLD && data.status !== 'failed') {
+          const card = document.getElementById(`sensor-${key}`);
+          if (card && !card.classList.contains('failed')) {
+            card.classList.add('inactive');
+            log(`⚠ Sensor ${data.sensorId} inactive (no data for ${(timeSinceLastSeen/1000).toFixed(1)}s)`, 'warning');
+          }
+        }
+      });
+      updateFailedCount();
+    }, 2000);
+
+    const elements = {
+      status: document.getElementById('status'),
+      connectBtn: document.getElementById('connectBtn'),
+      subscribeAllBtn: document.getElementById('subscribeAllBtn'),
+      clearBtn: document.getElementById('clearBtn'),
+      msgCount: document.getElementById('msgCount'),
+      msgRate: document.getElementById('msgRate'),
+      sensorCount: document.getElementById('sensorCount'),
+      failedCount: document.getElementById('failedCount'),
+      latency: document.getElementById('latency'),
+      sensorsGrid: document.getElementById('sensorsGrid'),
+      log: document.getElementById('log')
+    };
+
+    function log(message, type = 'info') {
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      elements.log.insertBefore(entry, elements.log.firstChild);
+      
+      while (elements.log.children.length > 50) {
+        elements.log.removeChild(elements.log.lastChild);
+      }
+    }
+
+    function connect() {
+      socket = io('http://localhost:3000', {
+        transports: ['websocket'],
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000
+      });
+
+      socket.on('connect', () => {
+        elements.status.textContent = 'Connected';
+        elements.status.className = 'status connected';
+        elements.connectBtn.textContent = 'Disconnect';
+        elements.subscribeAllBtn.disabled = false;
+        log('✓ Connected to Socket.IO server', 'success');
+      });
+
+      socket.on('connected', (data) => {
+        log(`Server: ${data.message}`, 'info');
+      });
+
+      socket.on('batch', (batch) => {
+        processBatch(batch.data);
+      });
+
+      socket.on('disconnect', (reason) => {
+        elements.status.textContent = 'Disconnected';
+        elements.status.className = 'status disconnected';
+        elements.connectBtn.textContent = 'Connect';
+        elements.subscribeAllBtn.disabled = true;
+        log(`✗ Disconnected: ${reason}`, 'error');
+      });
+
+      socket.on('reconnect', (attemptNumber) => {
+        log(`✓ Reconnected after ${attemptNumber} attempts`, 'success');
+      });
+
+      socket.on('error', (error) => {
+        log('✗ Socket error occurred', 'error');
+      });
+    }
+
+    function subscribeToRooms(rooms, callback) {
+      if (!socket || !socket.connected) {
+        log('✗ Not connected to server', 'error');
+        return;
+      }
+      
+      socket.emit('subscribe', { rooms }, (response) => {
+        if (response && response.success) {
+          currentRooms = response.rooms;
+          log(`✓ Subscribed to: ${rooms.join(', ')}`, 'success');
+          if (callback) callback(response);
+        }
+      });
+    }
+
+    function unsubscribeFromRooms(rooms) {
+      if (!socket || !socket.connected) return;
+      
+      socket.emit('unsubscribe', { rooms }, (response) => {
+        if (response && response.success) {
+          currentRooms = response.rooms;
+          log(`✓ Unsubscribed from: ${rooms.join(', ')}`, 'info');
+        }
+      });
+    }
+
+    function processBatch(messages) {
+      const now = Date.now();
+      stats.totalMessages += messages.length;
+      stats.lastSecondMessages += messages.length;
+
+      messages.forEach(msg => {
+        const latency = now - msg.timestamp;
+        stats.latencies.push(latency);
+        if (stats.latencies.length > 100) stats.latencies.shift();
+
+        const key = `${msg.sensorId}`;
+        
+        // Check if this is a state change (failed/recovered)
+        const previousData = sensors.get(key);
+        if (previousData) {
+          if (previousData.status !== msg.status) {
+            if (msg.status === 'failed') {
+              log(`✗ Sensor ${msg.sensorId} FAILED`, 'error');
+            } else if (msg.status === 'active' && previousData.status === 'failed') {
+              log(`✓ Sensor ${msg.sensorId} RECOVERED`, 'success');
+            }
+          }
+        }
+        
+        sensors.set(key, msg);
+        sensorLastSeen.set(key, now);
+        updateSensorCard(key, msg);
+      });
+
+      updateStats();
+      updateFailedCount();
+    }
+
+    function updateSensorCard(key, data) {
+      let card = document.getElementById(`sensor-${key}`);
+      
+      if (!card) {
+        card = document.createElement('div');
+        card.id = `sensor-${key}`;
+        card.className = 'sensor-card';
+        card.onclick = () => openSensorDetails(data.sensorId);
+        card.title = 'Click to view details';
+        elements.sensorsGrid.appendChild(card);
+      }
+
+      const unit = getUnit(data.sensorType);
+      const status = data.status || 'active';
+      
+      // Update card classes based on status
+      card.className = 'sensor-card';
+      if (status === 'failed') {
+        card.classList.add('failed');
+      } else {
+        card.classList.remove('inactive'); // Remove inactive if sensor is now active
+      }
+      
+      const statusText = status === 'failed' ? 'FAILED' : status === 'inactive' ? 'INACTIVE' : 'ACTIVE';
+      
+      card.innerHTML = `
+        <div class="sensor-status-indicator ${status === 'failed' ? 'failed' : status === 'inactive' ? 'inactive' : ''}"></div>
+        <div class="sensor-id">S#${data.sensorId} | E${data.edgeId}</div>
+        <div class="sensor-type">${data.sensorType}</div>
+        <div class="sensor-value">
+          ${data.value.toFixed(1)}
+          <span class="sensor-unit">${unit}</span>
+        </div>
+        <div class="sensor-status-text">${statusText}</div>
+      `;
+      
+      card.classList.add('flash');
+      setTimeout(() => card.classList.remove('flash'), 300);
+    }
+
+    function updateFailedCount() {
+      let failed = 0;
+      let inactive = 0;
+      
+      sensors.forEach((data, key) => {
+        if (data.status === 'failed') {
+          failed++;
+        } else {
+          const card = document.getElementById(`sensor-${key}`);
+          if (card && card.classList.contains('inactive')) {
+            inactive++;
+          }
+        }
+      });
+      
+      elements.failedCount.textContent = failed + inactive;
+    }
+
+    function getUnit(sensorType) {
+      const units = {
+        temperature: '°C',
+        humidity: '%',
+        pressure: 'hPa',
+        vibration: 'mm/s'
+      };
+      return units[sensorType] || '';
+    }
+
+    function openSensorDetails(sensorId) {
+      const connectionData = {
+        sensorId: sensorId,
+        isConnected: socket && socket.connected,
+        serverUrl: 'http://localhost:3000'
+      };
+      localStorage.setItem('sensorDetailsConnection', JSON.stringify(connectionData));
+      window.open(`sensor-details.html?id=${sensorId}`, '_blank');
+    }
+
+    function updateStats() {
+      elements.msgCount.textContent = stats.totalMessages;
+      elements.sensorCount.textContent = sensors.size;
+      
+      const now = Date.now();
+      if (now - stats.lastSecondTime >= 1000) {
+        elements.msgRate.textContent = stats.lastSecondMessages;
+        stats.lastSecondMessages = 0;
+        stats.lastSecondTime = now;
+      }
+
+      if (stats.latencies.length > 0) {
+        const avgLatency = stats.latencies.reduce((a, b) => a + b, 0) / stats.latencies.length;
+        elements.latency.innerHTML = `${Math.round(avgLatency)}<span class="sensor-unit">ms</span>`;
+      }
+    }
+
+    // Event Listeners
+    elements.connectBtn.addEventListener('click', () => {
+      if (socket && socket.connected) {
+        socket.disconnect();
+      } else {
+        connect();
+      }
+    });
+
+    elements.subscribeAllBtn.addEventListener('click', () => {
+      subscribeToRooms(['sensors:all']);
+    });
+
+    elements.clearBtn.addEventListener('click', () => {
+      sensors.clear();
+      sensorLastSeen.clear();
+      elements.sensorsGrid.innerHTML = '';
+      stats = {
+        totalMessages: 0,
+        lastSecondMessages: 0,
+        lastSecondTime: Date.now(),
+        latencies: []
+      };
+      log('Display cleared', 'info');
+    });
+
+    // Filter buttons
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const sensorType = btn.dataset.type;
+        const isActive = btn.classList.contains('active');
+        
+        if (isActive) {
+          btn.classList.remove('active');
+          unsubscribeFromRooms([`sensor:${sensorType}`]);
+        } else {
+          btn.classList.add('active');
+          subscribeToRooms([`sensor:${sensorType}`]);
+        }
+      });
+    });
+
+    log('Dashboard loaded. Click "Connect" to start.', 'info');
+  </script>
+</body>
+</html>

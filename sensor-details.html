@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sensor Details</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    h1 {
+      color: #333;
+      margin-bottom: 8px;
+    }
+    
+    .back-btn {
+      display: inline-block;
+      padding: 8px 16px;
+      background: #667eea;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    
+    .back-btn:hover {
+      background: #5568d3;
+    }
+    
+    .metadata {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin: 20px 0;
+    }
+    
+    .meta-box {
+      background: #f9fafb;
+      padding: 16px;
+      border-radius: 8px;
+    }
+    
+    .meta-label {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 4px;
+    }
+    
+    .meta-value {
+      font-size: 20px;
+      font-weight: bold;
+      color: #333;
+    }
+    
+    .analytics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin: 20px 0;
+    }
+    
+    .stat-box {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 16px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    
+    .stat-label {
+      font-size: 11px;
+      opacity: 0.9;
+      margin-bottom: 4px;
+    }
+    
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+    }
+    
+    .chart-container {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .chart-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 16px;
+    }
+    
+    .realtime-status {
+      margin-bottom: 12px;
+      padding: 12px;
+      background: #f3f4f6;
+      border-radius: 6px;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      font-size: 14px;
+    }
+    
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ef4444;
+    }
+    
+    .status-dot.connected {
+      background: #10b981;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #5568d3;
+    }
+    
+    .btn-primary.active {
+      background: #4c51bf;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: white;
+      font-size: 18px;
+    }
+    
+    .error {
+      background: #fee;
+      color: #c00;
+      padding: 16px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <a href="socketio-client.html" class="back-btn">← Back to Dashboard</a>
+      <h1 id="sensorTitle">Sensor Details</h1>
+      
+      <div class="metadata" id="metadata"></div>
+      
+      <div class="analytics-grid" id="analytics"></div>
+      
+      <div class="controls">
+        <button class="btn-primary active" data-hours="1">1 Hour</button>
+        <button class="btn-primary" data-hours="6">6 Hours</button>
+        <button class="btn-primary" data-hours="24">24 Hours</button>
+        <button class="btn-primary" data-hours="168">7 Days</button>
+      </div>
+    </div>
+    
+    <div class="chart-container">
+      <div class="chart-title">Real-Time Feed</div>
+      <div class="realtime-status">
+        <div class="status-indicator">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="connectionStatus">Disconnected</span>
+        </div>
+        <div>
+          Live Updates: <strong id="liveUpdateCount">0</strong>
+        </div>
+        <div>
+          Current Value: <strong id="currentValue">--</strong>
+        </div>
+      </div>
+      <canvas id="realtimeChart"></canvas>
+    </div>
+    
+    <div class="chart-container">
+      <div class="chart-title">Historical Data</div>
+      <canvas id="historyChart"></canvas>
+    </div>
+    
+    <div id="loading" class="loading">Loading sensor data...</div>
+    <div id="error" class="error" style="display: none;"></div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const sensorId = parseInt(urlParams.get('id'));
+    let currentHours = 1;
+    let chart = null;
+    let realtimeChart = null;
+    let socket = null;
+    let realtimeData = [];
+    let updateCount = 0;
+    const maxRealtimePoints = 50;
+
+    if (!sensorId) {
+      document.getElementById('error').textContent = 'No sensor ID provided';
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('loading').style.display = 'none';
+    } else {
+      document.getElementById('sensorTitle').textContent = `Sensor #${sensorId}`;
+      loadSensorData();
+      connectToRealtimeStream();
+    }
+
+    function connectToRealtimeStream() {
+      const connectionData = localStorage.getItem('sensorDetailsConnection');
+      let serverUrl = 'http://localhost:3000';
+      
+      if (connectionData) {
+        const data = JSON.parse(connectionData);
+        serverUrl = data.serverUrl;
+      }
+
+      socket = io(serverUrl, {
+        transports: ['websocket'],
+        reconnection: true
+      });
+
+      socket.on('connect', () => {
+        document.getElementById('connectionStatus').textContent = 'Connected';
+        document.getElementById('statusDot').classList.add('connected');
+        
+        socket.emit('subscribe', { rooms: [`sensor:${sensorId}`] }, (response) => {
+          console.log('Subscribed to sensor:', sensorId);
+        });
+      });
+
+      socket.on('disconnect', () => {
+        document.getElementById('connectionStatus').textContent = 'Disconnected';
+        document.getElementById('statusDot').classList.remove('connected');
+      });
+
+      socket.on('batch', (batch) => {
+        const sensorReadings = batch.data.filter(d => d.sensorId === sensorId);
+        
+        sensorReadings.forEach(reading => {
+          updateCount++;
+          document.getElementById('liveUpdateCount').textContent = updateCount;
+          document.getElementById('currentValue').textContent = reading.value.toFixed(2);
+          
+          realtimeData.push({
+            timestamp: new Date(reading.timestamp),
+            value: reading.value
+          });
+          
+          if (realtimeData.length > maxRealtimePoints) {
+            realtimeData.shift();
+          }
+          
+          updateRealtimeChart();
+        });
+      });
+    }
+
+    function updateRealtimeChart() {
+      const ctx = document.getElementById('realtimeChart').getContext('2d');
+      
+      const labels = realtimeData.map(d => d.timestamp.toLocaleTimeString());
+      const values = realtimeData.map(d => d.value);
+      
+      if (realtimeChart) {
+        realtimeChart.data.labels = labels;
+        realtimeChart.data.datasets[0].data = values;
+        realtimeChart.update('none');
+      } else {
+        realtimeChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Live Value',
+              data: values,
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              tension: 0.4,
+              fill: true,
+              pointRadius: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            aspectRatio: 3,
+            animation: false,
+            plugins: {
+              legend: {
+                display: true
+              }
+            },
+            scales: {
+              x: {
+                display: true,
+                ticks: {
+                  maxTicksLimit: 8
+                }
+              },
+              y: {
+                display: true,
+                beginAtZero: false
+              }
+            }
+          }
+        });
+      }
+    }
+
+    async function loadSensorData() {
+      try {
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('error').style.display = 'none';
+        
+        console.log(`Loading data for sensor ${sensorId}, ${currentHours} hours`);
+        
+        // Load analytics
+        const analyticsUrl = `http://localhost:3000/api/sensor/${sensorId}/analytics?hours=${currentHours}`;
+        console.log('Fetching analytics:', analyticsUrl);
+        
+        const analyticsRes = await fetch(analyticsUrl);
+        console.log('Analytics response status:', analyticsRes.status);
+        
+        if (!analyticsRes.ok) {
+          throw new Error(`Analytics API returned ${analyticsRes.status}`);
+        }
+        
+        const analyticsData = await analyticsRes.json();
+        console.log('Analytics data:', analyticsData);
+        
+        if (analyticsData.success) {
+          displayMetadata(analyticsData.metadata);
+          displayAnalytics(analyticsData.analytics);
+        } else {
+          console.warn('Analytics request unsuccessful:', analyticsData);
+        }
+        
+        // Load history
+        const historyUrl = `http://localhost:3000/api/sensor/${sensorId}/history?hours=${currentHours}`;
+        console.log('Fetching history:', historyUrl);
+        
+        const historyRes = await fetch(historyUrl);
+        console.log('History response status:', historyRes.status);
+        
+        if (!historyRes.ok) {
+          throw new Error(`History API returned ${historyRes.status}`);
+        }
+        
+        const historyData = await historyRes.json();
+        console.log('History data:', historyData.count, 'readings');
+        
+        if (historyData.success) {
+          if (historyData.data.length === 0) {
+            document.getElementById('error').textContent = 'No historical data found for this sensor yet. Data will appear after the first reading is saved to MongoDB.';
+            document.getElementById('error').style.display = 'block';
+          } else {
+            displayChart(historyData.data);
+          }
+        } else {
+          console.warn('History request unsuccessful:', historyData);
+        }
+        
+        document.getElementById('loading').style.display = 'none';
+        
+      } catch (err) {
+        console.error('Error loading data:', err);
+        document.getElementById('error').textContent = `Error loading data: ${err.message}. Make sure the Socket.IO server is running on port 3000.`;
+        document.getElementById('error').style.display = 'block';
+        document.getElementById('loading').style.display = 'none';
+      }
+    }
+
+    function displayMetadata(metadata) {
+      if (!metadata) return;
+      
+      const container = document.getElementById('metadata');
+      container.innerHTML = `
+        <div class="meta-box">
+          <div class="meta-label">Sensor Type</div>
+          <div class="meta-value">${metadata.sensorType}</div>
+        </div>
+        <div class="meta-box">
+          <div class="meta-label">Edge ID</div>
+          <div class="meta-value">${metadata.edgeId}</div>
+        </div>
+        <div class="meta-box">
+          <div class="meta-label">Status</div>
+          <div class="meta-value">${metadata.status}</div>
+        </div>
+        <div class="meta-box">
+          <div class="meta-label">Total Readings</div>
+          <div class="meta-value">${metadata.totalReadings.toLocaleString()}</div>
+        </div>
+        <div class="meta-box">
+          <div class="meta-label">First Seen</div>
+          <div class="meta-value">${new Date(metadata.firstSeen).toLocaleDateString()}</div>
+        </div>
+        <div class="meta-box">
+          <div class="meta-label">Last Seen</div>
+          <div class="meta-value">${new Date(metadata.lastSeen).toLocaleTimeString()}</div>
+        </div>
+      `;
+    }
+
+    function displayAnalytics(analytics) {
+      if (!analytics) return;
+      
+      const container = document.getElementById('analytics');
+      container.innerHTML = `
+        <div class="stat-box">
+          <div class="stat-label">Average</div>
+          <div class="stat-value">${(analytics.avgValue || 0).toFixed(2)}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Minimum</div>
+          <div class="stat-value">${(analytics.minValue || 0).toFixed(2)}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Maximum</div>
+          <div class="stat-value">${(analytics.maxValue || 0).toFixed(2)}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Std Dev</div>
+          <div class="stat-value">${(analytics.stdDev || 0).toFixed(2)}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Count</div>
+          <div class="stat-value">${(analytics.count || 0).toLocaleString()}</div>
+        </div>
+      `;
+    }
+
+    function displayChart(data) {
+      const ctx = document.getElementById('historyChart').getContext('2d');
+      
+      data.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      
+      const labels = data.map(d => new Date(d.timestamp).toLocaleString());
+      const values = data.map(d => d.value);
+      
+      if (chart) {
+        chart.destroy();
+      }
+      
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Sensor Value',
+            data: values,
+            borderColor: '#667eea',
+            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+            tension: 0.4,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          aspectRatio: 2.5,
+          plugins: {
+            legend: {
+              display: true
+            }
+          },
+          scales: {
+            x: {
+              display: true,
+              ticks: {
+                maxTicksLimit: 10
+              }
+            },
+            y: {
+              display: true,
+              beginAtZero: false
+            }
+          }
+        }
+      });
+    }
+
+    document.querySelectorAll('.btn-primary[data-hours]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.btn-primary[data-hours]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentHours = parseInt(btn.dataset.hours);
+        loadSensorData();
+      });
+    });
+
+    window.addEventListener('beforeunload', () => {
+      if (socket) {
+        socket.disconnect();
+      }
+    });
+  </script>
+</body>
+</html>
